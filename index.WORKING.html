@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LITUK Study Coach</title>
+<meta name="theme-color" content="#0f0720" />
+<style>
+  :root{
+    --bg:#0f0720; --card:#1a0f33; --card2:#22143f; --line:#33235c;
+    --accent:#a98bff; --accent2:#c4b1ff; --text:#ece8ff; --muted:#9a8cc4;
+    --warn:#ffcf5c; --bad:#ff7a8a; --good:#6ee7a8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:Georgia,"Times New Roman",serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:680px;margin:0 auto;padding:18px 16px 60px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .chip{background:var(--card2);border:1px solid var(--line);color:var(--accent2);
+    border-radius:12px;padding:8px 12px;font-size:13px;cursor:pointer;display:inline-flex;
+    align-items:center;gap:6px;font-family:ui-monospace,monospace;letter-spacing:.04em;}
+  .chip:hover{border-color:var(--accent)}
+  .eyebrow{text-align:center;letter-spacing:.45em;font-size:12px;color:#6f5fa0;
+    font-family:ui-monospace,monospace;margin-top:4px}
+  h1{text-align:center;font-size:40px;margin:2px 0 16px;letter-spacing:.04em}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);
+    border-radius:20px;padding:22px;margin:14px 0;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .lead{text-align:center;color:var(--muted);font-size:18px;line-height:1.5;margin:6px 4px 18px}
+  button.primary{width:100%;background:linear-gradient(180deg,var(--accent2),var(--accent));
+    color:#1a0f33;border:none;border-radius:14px;padding:16px;font-size:19px;font-weight:bold;
+    cursor:pointer;font-family:inherit}
+  button.primary:active{transform:translateY(1px)}
+  button.ghost{width:100%;background:transparent;color:var(--accent2);
+    border:1px solid var(--accent);border-radius:14px;padding:14px;font-size:17px;cursor:pointer;
+    font-family:inherit;margin-top:10px}
+  button:disabled{opacity:.55;cursor:default}
+  .tagrow{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
+  .tag{background:#3a2566;border:1px solid var(--line);color:var(--accent2);border-radius:20px;
+    padding:5px 12px;font-size:12px;font-family:ui-monospace,monospace;letter-spacing:.08em;cursor:pointer}
+  .tag:hover{border-color:var(--accent)}
+  .subtopic{text-align:center;color:var(--muted);font-family:ui-monospace,monospace;
+    font-size:13px;letter-spacing:.06em;margin-bottom:14px}
+  .emoji{text-align:center;font-size:30px;margin-bottom:10px}
+  .fact{text-align:center;font-size:21px;line-height:1.5}
+  .hooklbl{color:var(--accent);font-family:ui-monospace,monospace;font-size:12px;
+    letter-spacing:.18em;margin-bottom:8px}
+  .hook{font-style:italic;font-size:18px;margin:0 0 6px}
+  .tip{color:var(--muted);font-size:15px}
+  .err{text-align:center;color:var(--warn);margin-top:14px;font-weight:bold}
+  .err small{display:block;color:var(--bad);font-weight:normal;margin-top:4px}
+  .progress{text-align:center;color:var(--muted);font-family:ui-monospace,monospace;
+    font-size:12px;letter-spacing:.12em;margin-bottom:4px}
+  .opt{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--line);
+    color:var(--text);border-radius:12px;padding:14px;margin:8px 0;font-size:16px;cursor:pointer;font-family:inherit}
+  .opt:hover{border-color:var(--accent)}
+  .opt.correct{border-color:var(--good);background:#16341f}
+  .opt.wrong{border-color:var(--bad);background:#341620}
+  .qq{font-size:19px;text-align:center;margin-bottom:6px}
+  .expl{margin-top:12px;color:var(--muted);font-size:15px;line-height:1.5}
+  .score{text-align:center;font-size:18px;margin:2px 0 10px}
+  .stats{color:var(--muted);font-size:13px;text-align:center;margin-top:18px;line-height:1.7}
+  .stats b{color:var(--accent2)}
+  .overlay{position:fixed;inset:0;background:rgba(8,4,18,.78);display:flex;align-items:center;
+    justify-content:center;padding:18px;z-index:10}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;
+    width:100%;max-width:420px;position:relative}
+  .modal h2{margin:0 0 4px;font-size:22px;text-align:center}
+  .modal p{color:var(--muted);text-align:center;font-size:14px;margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .areabtn{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:12px;
+    padding:12px;font-size:15px;cursor:pointer;font-family:inherit}
+  .areabtn:hover,.areabtn.sel{border-color:var(--accent);background:#2c1b52}
+  .areabtn.full{grid-column:1/3}
+  input.name{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--text);
+    border-radius:12px;padding:13px;font-size:16px;font-family:inherit;margin-bottom:10px}
+  .plist{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
+  .pbtn{background:#2c1b52;border:1px solid var(--line);color:var(--accent2);border-radius:20px;
+    padding:7px 14px;cursor:pointer;font-size:14px;font-family:inherit}
+  .pbtn:hover{border-color:var(--accent)}
+  .small{font-size:12px;color:#6f5fa0;text-align:center;margin-top:12px}
+  .x{position:absolute;top:12px;right:14px;cursor:pointer;color:var(--muted);font-size:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <button class="chip" id="profileChip" onclick="openProfile()">👤 <span id="profileName">—</span></button>
+    <button class="chip" id="areaChip" onclick="openArea()">🎯 <span id="areaName">All topics</span></button>
+  </div>
+  <div class="eyebrow">LIFE IN THE UK · STUDY COACH</div>
+  <h1>🇬🇧 LITUK</h1>
+  <div id="view"></div>
+</div>
+
+<div id="overlay"></div>
+
+<script>
+const PROXY = "https://lituk-proxy.onrender.com/claude";
+const AREAS = ["History","Government","Culture","Society","Geography","Law","Values"];
+const NUM_Q = 4;
+
+// ---------- profile / storage ----------
+function getProfiles(){ try{return JSON.parse(localStorage.getItem("lituk_profiles")||"[]")}catch(e){return[]} }
+function saveProfiles(p){ localStorage.setItem("lituk_profiles",JSON.stringify(p)); }
+function current(){ return localStorage.getItem("lituk_current")||""; }
+function setCurrent(n){ localStorage.setItem("lituk_current",n); }
+function dataKey(n){ return "lituk_data_"+n; }
+function getData(n){ try{return JSON.parse(localStorage.getItem(dataKey(n))||"{}")}catch(e){return{}} }
+function saveData(n,d){ localStorage.setItem(dataKey(n),JSON.stringify(d)); }
+function profile(){
+  const n=current(); const d=getData(n);
+  d.seen=d.seen||0; d.correct=d.correct||0; d.total=d.total||0; d.weak=d.weak||{}; d.area=d.area||"All";
+  return d;
+}
+function commit(d){ saveData(current(),d); }
+
+// ---------- state ----------
+let last=null;     // last fact object (last.quiz is an array of questions)
+let loading=false;
+let qi=0;          // current quiz question index
+let qscore=0;      // correct answers in the current quiz set
+
+// ---------- rendering ----------
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function refreshChips(){
+  document.getElementById("profileName").textContent = current()||"Sign in";
+  const d=profile();
+  document.getElementById("areaName").textContent = (d.area==="All"||!d.area)?"All topics":d.area;
+}
+
+function renderHome(){
+  refreshChips();
+  document.getElementById("view").innerHTML = `
+    <div class="card">
+      <div class="lead">Tap below for a fact from across the entire handbook — with memory aids and a quiz.</div>
+      <button class="primary" onclick="getFact()" ${loading?"disabled":""}>${loading?"Thinking…":"✨ Get a Random Fact"}</button>
+    </div>
+    ${statsHtml()}`;
+}
+
+function statsHtml(){
+  const d=profile();
+  const weak=Object.entries(d.weak).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k])=>k);
+  const acc=d.total?Math.round(100*d.correct/d.total):0;
+  return `<div class="stats">
+    <b>${esc(current())}</b> · ${d.seen} facts seen · ${d.total?acc+"% quiz accuracy ("+d.correct+"/"+d.total+")":"no quizzes yet"}
+    ${weak.length?`<br>Weak areas: <b>${weak.map(esc).join(", ")}</b>`:""}
+  </div>`;
+}
+
+function quizArr(f){
+  let q=f&&f.quiz;
+  if(!q) return [];
+  if(Array.isArray(q)) return q;
+  if(Array.isArray(q.questions)) return q.questions;
+  if(q.question) return [q];
+  return [];
+}
+
+function renderFact(f){
+  refreshChips();
+  const cat = (f.category||"").toString();
+  const n = quizArr(f).length;
+  document.getElementById("view").innerHTML = `
+    <div class="tagrow"><span class="tag" onclick="openArea()">${esc(cat||"FACT").toUpperCase()}</span></div>
+    <div class="subtopic">${esc(f.topic||"")}</div>
+    <div class="card">
+      <div class="emoji">${esc(f.emoji_scene||"")}</div>
+      <div class="fact">${esc(f.fact||"")}</div>
+    </div>
+    <div class="card">
+      <div class="hooklbl">🧠 MEMORY HOOK</div>
+      <div class="hook">${esc(f.mnemonic||"")}</div>
+      <div class="tip">${esc(f.memory_tip||"")}</div>
+    </div>
+    ${n?`<button class="primary" onclick="startQuiz()">Test Yourself → ${n} Question${n>1?"s":""}</button>`:""}
+    <button class="ghost" onclick="getFact()">↻ New Fact</button>
+    ${statsHtml()}`;
+}
+
+function startQuiz(){ qi=0; qscore=0; renderQuiz(); }
+
+function renderQuiz(){
+  const arr=quizArr(last); const q=arr[qi]; if(!q) return;
+  const n=arr.length;
+  const opts=(q.options||[]).map((o,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${esc(o)}</button>`).join("");
+  document.getElementById("view").innerHTML = `
+    <div class="tagrow"><span class="tag">${esc((last.category||"QUIZ").toUpperCase())}</span></div>
+    <div class="progress">QUESTION ${qi+1} OF ${n}</div>
+    <div class="card">
+      <div class="qq">${esc(q.question)}</div>
+      <div id="opts">${opts}</div>
+      <div id="expl"></div>
+      <div id="qnav"></div>
+    </div>`;
+}
+
+function answer(i){
+  const arr=quizArr(last); const q=arr[qi]; const n=arr.length;
+  const correct=Number(q.answer_index);
+  const d=profile(); d.total++;
+  document.querySelectorAll(".opt").forEach(b=>{
+    const bi=Number(b.dataset.i); b.disabled=true;
+    if(bi===correct) b.classList.add("correct");
+    if(bi===i&&i!==correct) b.classList.add("wrong");
+  });
+  if(i===correct){ d.correct++; qscore++; }
+  else { const c=last.category||"General"; d.weak[c]=(d.weak[c]||0)+1; }
+  commit(d);
+  document.getElementById("expl").innerHTML =
+    `<div class="expl">${i===correct?"✅ Correct. ":"❌ Not quite. "}${esc(q.explanation||"")}</div>`;
+  const isLast = qi >= n-1;
+  document.getElementById("qnav").innerHTML = isLast
+    ? `<div class="score">You scored ${qscore} / ${n}</div>
+       <button class="primary" onclick="getFact()">✨ New Fact</button>
+       <button class="ghost" onclick="renderFact(last)">← Back to this fact</button>`
+    : `<button class="primary" onclick="nextQ()">Next question →</button>`;
+}
+
+function nextQ(){ qi++; renderQuiz(); }
+
+function showError(code,msg){
+  document.getElementById("view").innerHTML = `
+    <div class="card">
+      <div class="lead">Tap below for a fact from across the entire handbook — with memory aids and a quiz.</div>
+      <button class="primary" onclick="getFact()">✨ Get a Random Fact</button>
+      <div class="err">⚠️ ${esc(msg||("Proxy error "+code))}<small>Tap again to retry${code===503||code===502?" (server may be waking up — give it ~50s)":""}</small></div>
+    </div>${statsHtml()}`;
+}
+
+// ---------- LLM call ----------
+function buildPrompt(){
+  const d=profile();
+  const area = (d.area&&d.area!=="All")?d.area:AREAS[Math.floor(Math.random()*AREAS.length)];
+  const system='You are a Life in the UK Test expert. Return ONLY a JSON object, no markdown, no backticks: '+
+    '{"fact":"1-2 sentences, no apostrophes","category":"History|Government|Culture|Society|Geography|Law|Values",'+
+    '"topic":"sub-topic","emoji_scene":"4-6 emoji","mnemonic":"memory hook, no apostrophes",'+
+    '"memory_tip":"one sentence, no apostrophes",'+
+    '"quiz":[{"question":"a test question about the fact","options":["a","b","c","d"],"answer_index":0,"explanation":"one sentence, no apostrophes"}]}. '+
+    'The "quiz" array MUST contain exactly '+NUM_Q+' different multiple-choice questions about the fact, each with 4 options and the correct answer_index (0-3).';
+  const user = (d.area&&d.area!=="All")
+    ? `Topic area: "${area}". Pick a fresh sub-topic and return ONLY the JSON object with ${NUM_Q} quiz questions.`
+    : `Pick any topic area from the handbook (category "${area}") and a fresh sub-topic. Return ONLY the JSON object with ${NUM_Q} quiz questions.`;
+  return {system,user};
+}
+
+function parseJson(text){
+  let t=String(text).trim().replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim();
+  try{return JSON.parse(t);}catch(e){}
+  const m=t.match(/\{[\s\S]*\}/); if(m){ try{return JSON.parse(m[0]);}catch(e){} }
+  return null;
+}
+
+async function getFact(){
+  if(loading)return; loading=true; renderHome();
+  const {system,user}=buildPrompt();
+  try{
+    const r=await fetch(PROXY,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({max_tokens:1400,system,messages:[{role:"user",content:user}]})});
+    if(!r.ok){ loading=false; showError(r.status); return; }
+    const j=await r.json();
+    const text=(j.content&&j.content[0]&&j.content[0].text)||"";
+    const f=parseJson(text);
+    loading=false;
+    if(!f||!f.fact){ showError(0,"Could not read a fact. Tap to retry."); return; }
+    last=f;
+    const d=profile(); d.seen++; commit(d);
+    renderFact(f);
+  }catch(e){ loading=false; showError(0,"Network error: "+e.message); }
+}
+
+// ---------- modals ----------
+function closeOverlay(){ document.getElementById("overlay").innerHTML=""; }
+
+function openProfile(){
+  const profiles=getProfiles();
+  const list = profiles.length
+    ? `<div class="plist">${profiles.map(p=>`<button class="pbtn" onclick="pickProfile('${encodeURIComponent(p)}')">${esc(p)}</button>`).join("")}</div>`
+    : `<p>No profiles yet. Add your name to keep your history separate from anyone else using this link.</p>`;
+  document.getElementById("overlay").innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeOverlay()">
+      <div class="modal">
+        ${current()?'<span class="x" onclick="closeOverlay()">✕</span>':''}
+        <h2>Who's studying?</h2>
+        <p>Each person gets their own facts-seen count and weak areas.</p>
+        <input class="name" id="newName" placeholder="Enter a name" onkeydown="if(event.key==='Enter')addProfile()"/>
+        <button class="primary" onclick="addProfile()">Start studying</button>
+        ${list}
+        <div class="small">History is stored on this device, separately per name.</div>
+      </div>
+    </div>`;
+  setTimeout(()=>{const el=document.getElementById("newName");if(el)el.focus();},50);
+}
+function addProfile(){
+  const v=(document.getElementById("newName").value||"").trim();
+  if(!v)return;
+  const p=getProfiles(); if(!p.includes(v)){p.push(v);saveProfiles(p);}
+  setCurrent(v); closeOverlay(); last=null; renderHome();
+}
+function pickProfile(enc){
+  setCurrent(decodeURIComponent(enc)); closeOverlay(); last=null; renderHome();
+}
+
+function openArea(){
+  const d=profile(); const sel=d.area||"All";
+  const btns = `<button class="areabtn full ${sel==="All"?"sel":""}" onclick="setArea('All')">🎲 All topics (surprise me)</button>`+
+    AREAS.map(a=>`<button class="areabtn ${sel===a?"sel":""}" onclick="setArea('${a}')">${a}</button>`).join("");
+  document.getElementById("overlay").innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeOverlay()">
+      <div class="modal">
+        <span class="x" onclick="closeOverlay()">✕</span>
+        <h2>Choose a topic area</h2>
+        <p>Facts and quizzes will focus here until you change it.</p>
+        <div class="grid">${btns}</div>
+      </div>
+    </div>`;
+}
+function setArea(a){
+  const d=profile(); d.area=a; commit(d); closeOverlay(); refreshChips(); renderHome();
+}
+
+// ---------- boot ----------
+function boot(){
+  if(!current()){ renderHome(); openProfile(); }
+  else renderHome();
+}
+boot();
+</script>
+</body>
+</html>
