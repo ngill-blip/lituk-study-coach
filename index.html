@@ -9,13 +9,14 @@
   :root{
     --bg:#0f0720; --card:#1a0f33; --card2:#22143f; --line:#33235c;
     --accent:#a98bff; --accent2:#c4b1ff; --text:#ece8ff; --muted:#9a8cc4;
-    --warn:#ffcf5c; --bad:#ff7a8a; --good:#6ee7a8;
+    --warn:#ffcf5c; --bad:#ff7a8a; --good:#6ee7a8; --flag:#ffcf5c;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);
     font-family:Georgia,"Times New Roman",serif;-webkit-font-smoothing:antialiased;}
   .wrap{max-width:680px;margin:0 auto;padding:18px 16px 60px;}
   .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .rightchips{display:flex;gap:8px;align-items:center;}
   .chip{background:var(--card2);border:1px solid var(--line);color:var(--accent2);
     border-radius:12px;padding:8px 12px;font-size:13px;cursor:pointer;display:inline-flex;
     align-items:center;gap:6px;font-family:ui-monospace,monospace;letter-spacing:.04em;}
@@ -33,6 +34,9 @@
   button.ghost{width:100%;background:transparent;color:var(--accent2);
     border:1px solid var(--accent);border-radius:14px;padding:14px;font-size:17px;cursor:pointer;
     font-family:inherit;margin-top:10px}
+  button.flagbtn{width:100%;background:transparent;color:var(--flag);border:1px solid var(--flag);
+    border-radius:14px;padding:13px;font-size:16px;cursor:pointer;font-family:inherit;margin-top:10px}
+  button.flagbtn.on{background:rgba(255,207,92,.14)}
   button:disabled{opacity:.55;cursor:default}
   .tagrow{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
   .tag{background:#3a2566;border:1px solid var(--line);color:var(--accent2);border-radius:20px;
@@ -42,6 +46,9 @@
     font-size:13px;letter-spacing:.06em;margin-bottom:14px}
   .emoji{text-align:center;font-size:30px;margin-bottom:10px}
   .fact{text-align:center;font-size:21px;line-height:1.5}
+  .ctxlbl{color:var(--accent);font-family:ui-monospace,monospace;font-size:12px;
+    letter-spacing:.18em;margin-bottom:8px}
+  .ctx{font-size:16px;line-height:1.6;color:var(--text)}
   .hooklbl{color:var(--accent);font-family:ui-monospace,monospace;font-size:12px;
     letter-spacing:.18em;margin-bottom:8px}
   .hook{font-style:italic;font-size:18px;margin:0 0 6px}
@@ -60,6 +67,19 @@
   .score{text-align:center;font-size:18px;margin:2px 0 10px}
   .stats{color:var(--muted);font-size:13px;text-align:center;margin-top:18px;line-height:1.7}
   .stats b{color:var(--accent2)}
+  .secttl{font-size:22px;margin:6px 0 2px;text-align:center}
+  .weakrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px 0 4px}
+  .weakbtn{background:#3a2566;border:1px solid var(--line);color:var(--accent2);border-radius:20px;
+    padding:7px 13px;font-size:13px;cursor:pointer;font-family:ui-monospace,monospace}
+  .weakbtn:hover{border-color:var(--accent)}
+  .flagitem{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+  .flagitem .ft{font-size:16px;line-height:1.4;margin-bottom:8px}
+  .flagitem .meta{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px}
+  .rowbtns{display:flex;gap:8px}
+  .mini{flex:1;background:transparent;border:1px solid var(--line);color:var(--accent2);border-radius:10px;
+    padding:9px;font-size:14px;cursor:pointer;font-family:inherit}
+  .mini:hover{border-color:var(--accent)}
+  .mini.danger{color:var(--bad);border-color:#5a2740}
   .overlay{position:fixed;inset:0;background:rgba(8,4,18,.78);display:flex;align-items:center;
     justify-content:center;padding:18px;z-index:10}
   .modal{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;
@@ -85,7 +105,10 @@
 <div class="wrap">
   <div class="topbar">
     <button class="chip" id="profileChip" onclick="openProfile()">👤 <span id="profileName">—</span></button>
-    <button class="chip" id="areaChip" onclick="openArea()">🎯 <span id="areaName">All topics</span></button>
+    <div class="rightchips">
+      <button class="chip" id="reviewChip" onclick="renderReview()">📌 <span id="reviewCount">0</span></button>
+      <button class="chip" id="areaChip" onclick="openArea()">🎯 <span id="areaName">All topics</span></button>
+    </div>
   </div>
   <div class="eyebrow">LIFE IN THE UK · STUDY COACH</div>
   <h1>🇬🇧 LITUK</h1>
@@ -110,6 +133,7 @@ function saveData(n,d){ localStorage.setItem(dataKey(n),JSON.stringify(d)); }
 function profile(){
   const n=current(); const d=getData(n);
   d.seen=d.seen||0; d.correct=d.correct||0; d.total=d.total||0; d.weak=d.weak||{}; d.area=d.area||"All";
+  d.flagged=d.flagged||[]; d.recent=d.recent||[];
   return d;
 }
 function commit(d){ saveData(current(),d); }
@@ -117,18 +141,29 @@ function commit(d){ saveData(current(),d); }
 // ---------- state ----------
 let last=null;     // last fact object (last.quiz is an array of questions)
 let loading=false;
-let qi=0;          // current quiz question index
-let qscore=0;      // correct answers in the current quiz set
+let session=null;  // active quiz session {pool:[{q,category}], idx, score, mode}
 
-// ---------- rendering ----------
+// ---------- helpers ----------
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function quizArr(f){
+  let q=f&&f.quiz;
+  if(!q) return [];
+  if(Array.isArray(q)) return q;
+  if(Array.isArray(q.questions)) return q.questions;
+  if(q.question) return [q];
+  return [];
+}
+function weakList(d){ return Object.entries(d.weak).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k])=>k); }
+function isFlagged(f){ return profile().flagged.some(x=>x.fact===(f&&f.fact)); }
 
 function refreshChips(){
   document.getElementById("profileName").textContent = current()||"Sign in";
   const d=profile();
   document.getElementById("areaName").textContent = (d.area==="All"||!d.area)?"All topics":d.area;
+  document.getElementById("reviewCount").textContent = d.flagged.length;
 }
 
+// ---------- home ----------
 function renderHome(){
   refreshChips();
   document.getElementById("view").innerHTML = `
@@ -141,27 +176,20 @@ function renderHome(){
 
 function statsHtml(){
   const d=profile();
-  const weak=Object.entries(d.weak).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k])=>k);
+  const weak=weakList(d);
   const acc=d.total?Math.round(100*d.correct/d.total):0;
   return `<div class="stats">
-    <b>${esc(current())}</b> · ${d.seen} facts seen · ${d.total?acc+"% quiz accuracy ("+d.correct+"/"+d.total+")":"no quizzes yet"}
+    <b>${esc(current())}</b> · ${d.seen} facts seen · ${d.total?acc+"% quiz accuracy ("+d.correct+"/"+d.total+")":"no quizzes yet"} · ${d.flagged.length} flagged
     ${weak.length?`<br>Weak areas: <b>${weak.map(esc).join(", ")}</b>`:""}
   </div>`;
 }
 
-function quizArr(f){
-  let q=f&&f.quiz;
-  if(!q) return [];
-  if(Array.isArray(q)) return q;
-  if(Array.isArray(q.questions)) return q.questions;
-  if(q.question) return [q];
-  return [];
-}
-
+// ---------- fact ----------
 function renderFact(f){
   refreshChips();
   const cat = (f.category||"").toString();
   const n = quizArr(f).length;
+  const flagged = isFlagged(f);
   document.getElementById("view").innerHTML = `
     <div class="tagrow"><span class="tag" onclick="openArea()">${esc(cat||"FACT").toUpperCase()}</span></div>
     <div class="subtopic">${esc(f.topic||"")}</div>
@@ -169,25 +197,52 @@ function renderFact(f){
       <div class="emoji">${esc(f.emoji_scene||"")}</div>
       <div class="fact">${esc(f.fact||"")}</div>
     </div>
+    ${f.details?`<div class="card"><div class="ctxlbl">📖 IN CONTEXT</div><div class="ctx">${esc(f.details)}</div></div>`:""}
     <div class="card">
       <div class="hooklbl">🧠 MEMORY HOOK</div>
       <div class="hook">${esc(f.mnemonic||"")}</div>
       <div class="tip">${esc(f.memory_tip||"")}</div>
     </div>
-    ${n?`<button class="primary" onclick="startQuiz()">Test Yourself → ${n} Question${n>1?"s":""}</button>`:""}
+    ${n?`<button class="primary" onclick="startFactQuiz()">Test Yourself → ${n} Question${n>1?"s":""}</button>`:""}
+    <button class="flagbtn ${flagged?"on":""}" onclick="toggleFlag()">${flagged?"✓ Flagged — saved to Review":"⚑ Flag for more help"}</button>
     <button class="ghost" onclick="getFact()">↻ New Fact</button>
     ${statsHtml()}`;
 }
 
-function startQuiz(){ qi=0; qscore=0; renderQuiz(); }
+function toggleFlag(){
+  if(!last) return;
+  const d=profile();
+  const i=d.flagged.findIndex(x=>x.fact===last.fact);
+  if(i>=0) d.flagged.splice(i,1);
+  else d.flagged.push(last);
+  commit(d);
+  renderFact(last);
+}
+
+// ---------- quiz engine (session based) ----------
+function startFactQuiz(){
+  const pool=quizArr(last).map(q=>({q, category:last.category||"General"}));
+  session={pool, idx:0, score:0, mode:"fact"};
+  renderQuiz();
+}
+function startReviewQuiz(){
+  const d=profile();
+  let pool=[];
+  d.flagged.forEach(f=>quizArr(f).forEach(q=>pool.push({q, category:f.category||"General"})));
+  if(!pool.length){ renderReview("No quiz questions are stored on your flagged facts yet."); return; }
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  session={pool, idx:0, score:0, mode:"review"};
+  renderQuiz();
+}
 
 function renderQuiz(){
-  const arr=quizArr(last); const q=arr[qi]; if(!q) return;
-  const n=arr.length;
+  const item=session.pool[session.idx]; if(!item) return;
+  const q=item.q; const n=session.pool.length;
   const opts=(q.options||[]).map((o,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${esc(o)}</button>`).join("");
+  const label = session.mode==="review" ? "REVIEW QUIZ" : (last.category||"QUIZ").toUpperCase();
   document.getElementById("view").innerHTML = `
-    <div class="tagrow"><span class="tag">${esc((last.category||"QUIZ").toUpperCase())}</span></div>
-    <div class="progress">QUESTION ${qi+1} OF ${n}</div>
+    <div class="tagrow"><span class="tag">${esc(label)}</span></div>
+    <div class="progress">QUESTION ${session.idx+1} OF ${n}</div>
     <div class="card">
       <div class="qq">${esc(q.question)}</div>
       <div id="opts">${opts}</div>
@@ -197,7 +252,7 @@ function renderQuiz(){
 }
 
 function answer(i){
-  const arr=quizArr(last); const q=arr[qi]; const n=arr.length;
+  const item=session.pool[session.idx]; const q=item.q; const n=session.pool.length;
   const correct=Number(q.answer_index);
   const d=profile(); d.total++;
   document.querySelectorAll(".opt").forEach(b=>{
@@ -205,21 +260,69 @@ function answer(i){
     if(bi===correct) b.classList.add("correct");
     if(bi===i&&i!==correct) b.classList.add("wrong");
   });
-  if(i===correct){ d.correct++; qscore++; }
-  else { const c=last.category||"General"; d.weak[c]=(d.weak[c]||0)+1; }
+  if(i===correct){ d.correct++; session.score++; }
+  else { const c=item.category||"General"; d.weak[c]=(d.weak[c]||0)+1; }
   commit(d);
   document.getElementById("expl").innerHTML =
     `<div class="expl">${i===correct?"✅ Correct. ":"❌ Not quite. "}${esc(q.explanation||"")}</div>`;
-  const isLast = qi >= n-1;
-  document.getElementById("qnav").innerHTML = isLast
-    ? `<div class="score">You scored ${qscore} / ${n}</div>
-       <button class="primary" onclick="getFact()">✨ New Fact</button>
-       <button class="ghost" onclick="renderFact(last)">← Back to this fact</button>`
-    : `<button class="primary" onclick="nextQ()">Next question →</button>`;
+  const isLast = session.idx >= n-1;
+  let endBtns;
+  if(isLast){
+    const score = `<div class="score">You scored ${session.score} / ${n}</div>`;
+    endBtns = session.mode==="review"
+      ? score+`<button class="primary" onclick="renderReview()">← Back to Review list</button>
+               <button class="ghost" onclick="startReviewQuiz()">↻ Quiz me again</button>`
+      : score+`<button class="primary" onclick="getFact()">✨ New Fact</button>
+               <button class="ghost" onclick="renderFact(last)">← Back to this fact</button>`;
+  } else {
+    endBtns = `<button class="primary" onclick="nextQ()">Next question →</button>`;
+  }
+  document.getElementById("qnav").innerHTML = endBtns;
+}
+function nextQ(){ session.idx++; renderQuiz(); }
+
+// ---------- review ----------
+function renderReview(msg){
+  refreshChips();
+  const d=profile();
+  const weak=weakList(d);
+  const weakHtml = weak.length
+    ? `<div class="secttl">🎯 Weak areas</div>
+       <p style="text-align:center;color:var(--muted);font-size:14px;margin:4px 0">Tap one to study a fresh fact there.</p>
+       <div class="weakrow">${weak.map(w=>`<button class="weakbtn" onclick="practiceArea('${w}')">${w} ✦</button>`).join("")}</div>`
+    : `<div class="secttl">🎯 Weak areas</div><p style="text-align:center;color:var(--muted)">None yet — take some quizzes to find them.</p>`;
+  const flaggedHtml = d.flagged.length
+    ? d.flagged.map((f,idx)=>`
+        <div class="flagitem">
+          <div class="meta">${esc((f.category||"FACT").toUpperCase())}${f.topic?" · "+esc(f.topic):""}</div>
+          <div class="ft">${esc(f.fact||"")}</div>
+          <div class="rowbtns">
+            <button class="mini" onclick="viewFlagged(${idx})">View</button>
+            <button class="mini danger" onclick="unflag(${idx})">Remove</button>
+          </div>
+        </div>`).join("")
+    : `<p style="text-align:center;color:var(--muted)">No flagged facts yet. Tap “⚑ Flag for more help” on any fact to save it here.</p>`;
+  const totalQ = d.flagged.reduce((s,f)=>s+quizArr(f).length,0);
+  document.getElementById("view").innerHTML = `
+    ${msg?`<div class="err" style="color:var(--warn)">${esc(msg)}</div>`:""}
+    ${weakHtml}
+    <div class="secttl" style="margin-top:18px">📌 Flagged facts (${d.flagged.length})</div>
+    ${d.flagged.length&&totalQ?`<button class="primary" onclick="startReviewQuiz()">📝 Quiz me on flagged (${totalQ} question${totalQ>1?"s":""})</button>`:""}
+    ${flaggedHtml}
+    <button class="ghost" onclick="renderHome()">← Back to home</button>`;
+}
+function practiceArea(a){
+  const d=profile(); d.area=a; commit(d); refreshChips(); getFact();
+}
+function viewFlagged(idx){
+  const d=profile(); const f=d.flagged[idx]; if(!f) return;
+  last=f; renderFact(f);
+}
+function unflag(idx){
+  const d=profile(); d.flagged.splice(idx,1); commit(d); renderReview();
 }
 
-function nextQ(){ qi++; renderQuiz(); }
-
+// ---------- errors ----------
 function showError(code,msg){
   document.getElementById("view").innerHTML = `
     <div class="card">
@@ -233,15 +336,19 @@ function showError(code,msg){
 function buildPrompt(){
   const d=profile();
   const area = (d.area&&d.area!=="All")?d.area:AREAS[Math.floor(Math.random()*AREAS.length)];
-  const system='You are a Life in the UK Test expert. Return ONLY a JSON object, no markdown, no backticks: '+
-    '{"fact":"1-2 sentences, no apostrophes","category":"History|Government|Culture|Society|Geography|Law|Values",'+
+  const system='You are a Life in the UK Test expert and a vivid storyteller. Return ONLY a JSON object, no markdown, no backticks: '+
+    '{"fact":"1-2 sentences, no apostrophes","details":"4-6 sentences told as a vivid mini-story: explain what led up to this, the motivations of the key people, what happened next, and finish with ONE genuinely interesting or surprising tie-in or piece of trivia (for example a modern place, tradition, hiking trail, phrase or building that still exists today). No apostrophes.",'+
+    '"category":"History|Government|Culture|Society|Geography|Law|Values",'+
     '"topic":"sub-topic","emoji_scene":"4-6 emoji","mnemonic":"memory hook, no apostrophes",'+
     '"memory_tip":"one sentence, no apostrophes",'+
     '"quiz":[{"question":"a test question about the fact","options":["a","b","c","d"],"answer_index":0,"explanation":"one sentence, no apostrophes"}]}. '+
     'The "quiz" array MUST contain exactly '+NUM_Q+' different multiple-choice questions about the fact, each with 4 options and the correct answer_index (0-3).';
+  const recent = d.recent.slice(-25);
+  const avoid = recent.length ? ' Do NOT repeat or closely overlap any of these recently shown sub-topics: '+recent.map(t=>'"'+t+'"').join(", ")+'.' : '';
+  const breadth = ' Cover the FULL breadth of the Life in the UK handbook and deliberately choose a less-common sub-topic. Avoid over-used cliches like Magna Carta and the 1066 Battle of Hastings unless they have not appeared recently. Vary across eras, regions and themes each time.';
   const user = (d.area&&d.area!=="All")
-    ? `Topic area: "${area}". Pick a fresh sub-topic and return ONLY the JSON object with ${NUM_Q} quiz questions.`
-    : `Pick any topic area from the handbook (category "${area}") and a fresh sub-topic. Return ONLY the JSON object with ${NUM_Q} quiz questions.`;
+    ? `Topic area: "${area}". Pick a fresh, varied sub-topic and return ONLY the JSON object with rich storytelling details and ${NUM_Q} quiz questions.${avoid}${breadth}`
+    : `Pick any topic area from the handbook (category "${area}") and a fresh, varied sub-topic. Return ONLY the JSON object with rich storytelling details and ${NUM_Q} quiz questions.${avoid}${breadth}`;
   return {system,user};
 }
 
@@ -257,7 +364,7 @@ async function getFact(){
   const {system,user}=buildPrompt();
   try{
     const r=await fetch(PROXY,{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({max_tokens:1400,system,messages:[{role:"user",content:user}]})});
+      body:JSON.stringify({max_tokens:1700,system,messages:[{role:"user",content:user}]})});
     if(!r.ok){ loading=false; showError(r.status); return; }
     const j=await r.json();
     const text=(j.content&&j.content[0]&&j.content[0].text)||"";
@@ -265,7 +372,9 @@ async function getFact(){
     loading=false;
     if(!f||!f.fact){ showError(0,"Could not read a fact. Tap to retry."); return; }
     last=f;
-    const d=profile(); d.seen++; commit(d);
+    const d=profile(); d.seen++;
+    if(f.topic){ d.recent.push(f.topic); if(d.recent.length>30) d.recent=d.recent.slice(-30); }
+    commit(d);
     renderFact(f);
   }catch(e){ loading=false; showError(0,"Network error: "+e.message); }
 }
@@ -283,7 +392,7 @@ function openProfile(){
       <div class="modal">
         ${current()?'<span class="x" onclick="closeOverlay()">✕</span>':''}
         <h2>Who's studying?</h2>
-        <p>Each person gets their own facts-seen count and weak areas.</p>
+        <p>Each person gets their own facts seen, weak areas and flagged facts.</p>
         <input class="name" id="newName" placeholder="Enter a name" onkeydown="if(event.key==='Enter')addProfile()"/>
         <button class="primary" onclick="addProfile()">Start studying</button>
         ${list}
